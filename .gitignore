@@ -23,6 +23,7 @@ apps/admin-web/dist/
 apps/map-web/data/map.json
 apps/map-web/data/map.json.tmp
 apps/map-web/data/manifest.json
+apps/map-web/data/.publish.lock
 
 # 工具输出
 tools/tiles/out/
