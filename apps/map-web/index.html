@@ -9,6 +9,8 @@
   <meta name="format-detection" content="telephone=no" />
   <title>黔山漫游 · 卫星地图</title>
   <script src="./config.js"></script>
+  <!-- supercluster 9.1.0（ISC）UMD 构建，见 vendor/README.md -->
+  <script src="./vendor/supercluster.min.js"></script>
   <script src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
   <style>
     :root {
@@ -325,7 +327,10 @@
     var CATEGORIES = [];
     var CAT_MAP = {};
     var POIS = [];
-    var markers = [];
+    var clusterIndex = null;
+    var clusterMarkers = [];
+    var clusterTimer = null;
+    var clusterBound = false;
     var cityOverlays = [];
     var countyOverlays = [];
     var townOverlays = [];
@@ -1050,19 +1055,140 @@
       });
     }
 
-    function renderMarkers() {
+    function poiIcon(poi) {
+      return new T.Icon({
+        iconUrl: './icons/pin-' + poi.category + '.png',
+        iconSize: new T.Point(30, 38),
+        iconAnchor: new T.Point(15, 38)
+      });
+    }
+
+    function clusterIcon(count) {
+      var color = currentCat !== 'all' && CAT_MAP[currentCat]
+        ? CAT_MAP[currentCat].color
+        : '#00e5ff';
+      if (!/^#[0-9a-fA-F]{3,8}$/.test(color || '')) color = '#00e5ff';
+      var size = count >= 100 ? 48 : 44;
+      var label = count > 999 ? '999+' : String(count);
+      var fontSize = count >= 100 ? 13 : 14;
+      var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + size +
+        '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '">' +
+        '<circle cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + (size / 2 - 2) +
+        '" fill="rgba(5,9,20,0.72)" stroke="' + color + '" stroke-width="1.5"/>' +
+        '<circle cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + (size / 2 - 6) +
+        '" fill="' + color + '" fill-opacity="0.16"/>' +
+        '<text x="50%" y="50%" dy="0.35em" text-anchor="middle" ' +
+        'font-family="DIN Alternate,Arial,sans-serif" font-size="' + fontSize +
+        '" font-weight="700" fill="#e6fbff">' + label + '</text></svg>';
+      return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    }
+
+    function buildClusterIndex() {
+      if (!window.Supercluster) return null;
+      var index = new window.Supercluster({ radius: 62, maxZoom: 16, minZoom: 1 });
+      var features = [];
       POIS.forEach(function (poi) {
-        var icon = new T.Icon({
-          iconUrl: './icons/pin-' + poi.category + '.png',
-          iconSize: new T.Point(30, 38),
-          iconAnchor: new T.Point(15, 38)
+        if (currentCat !== 'all' && poi.category !== currentCat) return;
+        var lng = Number(poi.lng);
+        var lat = Number(poi.lat);
+        if (!isFinite(lng) || !isFinite(lat)) return;
+        features.push({
+          type: 'Feature',
+          properties: { poi: poi },
+          geometry: { type: 'Point', coordinates: [lng, lat] }
         });
-        var marker = new T.Marker(new T.LngLat(poi.lng, poi.lat), { icon: icon });
+      });
+      index.load(features);
+      return index;
+    }
+
+    function clearClusterMarkers() {
+      if (!map) return;
+      clusterMarkers.forEach(function (marker) { map.removeOverLay(marker); });
+      clusterMarkers = [];
+    }
+
+    function renderClusterMarkers() {
+      if (!map || !clusterIndex) return;
+      clearClusterMarkers();
+      var bounds = map.getBounds();
+      var sw = bounds.getSouthWest();
+      var ne = bounds.getNorthEast();
+      var bbox = [
+        Math.min(sw.lng, ne.lng), Math.min(sw.lat, ne.lat),
+        Math.max(sw.lng, ne.lng), Math.max(sw.lat, ne.lat)
+      ];
+      var features = clusterIndex.getClusters(bbox, Math.round(map.getZoom()));
+
+      features.forEach(function (feature) {
+        var props = feature.properties || {};
+        var coords = feature.geometry.coordinates;
+        if (props.cluster) {
+          var count = props.point_count || 0;
+          var size = count >= 100 ? 48 : 44;
+          var icon = new T.Icon({
+            iconUrl: clusterIcon(count),
+            iconSize: new T.Point(size, size),
+            iconAnchor: new T.Point(size / 2, size / 2)
+          });
+          var clusterMarker = new T.Marker(
+            new T.LngLat(coords[0], coords[1]), { icon: icon }
+          );
+          clusterMarker.addEventListener('click', function () {
+            var zoom = Math.min(
+              clusterIndex.getClusterExpansionZoom(props.cluster_id),
+              18
+            );
+            map.centerAndZoom(new T.LngLat(coords[0], coords[1]), zoom);
+          });
+          map.addOverLay(clusterMarker);
+          clusterMarkers.push(clusterMarker);
+          return;
+        }
+        var poi = props.poi;
+        if (!poi) return;
+        var marker = new T.Marker(
+          new T.LngLat(coords[0], coords[1]), { icon: poiIcon(poi) }
+        );
         marker.addEventListener('click', function () { openCard(poi); });
         map.addOverLay(marker);
-        markers.push({ poi: poi, marker: marker });
+        clusterMarkers.push(marker);
       });
-      window.__markers = markers;
+      window.__markers = clusterMarkers;
+    }
+
+    function scheduleClusterRender() {
+      if (!clusterIndex || clusterTimer) return;
+      clusterTimer = setTimeout(function () {
+        clusterTimer = null;
+        renderClusterMarkers();
+      }, 120);
+    }
+
+    function renderFallbackMarkers() {
+      clearClusterMarkers();
+      POIS.forEach(function (poi) {
+        if (currentCat !== 'all' && poi.category !== currentCat) return;
+        var marker = new T.Marker(
+          new T.LngLat(poi.lng, poi.lat), { icon: poiIcon(poi) }
+        );
+        marker.addEventListener('click', function () { openCard(poi); });
+        map.addOverLay(marker);
+        clusterMarkers.push(marker);
+      });
+      window.__markers = clusterMarkers;
+    }
+
+    function renderMarkers() {
+      if (!map) return;
+      if (!clusterBound) {
+        clusterBound = true;
+        map.addEventListener('moveend', scheduleClusterRender);
+        map.addEventListener('zoomend', scheduleClusterRender);
+      }
+      clusterIndex = buildClusterIndex();
+      if (clusterIndex) renderClusterMarkers();
+      else renderFallbackMarkers();
     }
 
     function renderFilters() {
@@ -1099,10 +1225,9 @@
       document.querySelectorAll('#filters .chip').forEach(function (btn) {
         btn.classList.toggle('active', btn.getAttribute('data-cat') === cat);
       });
-      markers.forEach(function (item) {
-        if (cat === 'all' || item.poi.category === cat) item.marker.show();
-        else item.marker.hide();
-      });
+      clusterIndex = buildClusterIndex();
+      if (clusterIndex) renderClusterMarkers();
+      else renderFallbackMarkers();
     }
 
     function openCard(poi) {

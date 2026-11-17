@@ -43,7 +43,13 @@ data/
 ├── pois.json                # 示例数据
 ├── map.json                 # 后台发布生成（gitignore）
 └── manifest.json            # 后台发布生成（gitignore）
+
+vendor/
+├── supercluster.min.js      # 官方 UMD 构建（9.1.0，ISC）
+└── README.md                # 来源与升级说明
 ```
+
+部署时需同时拷贝 `vendor/` 目录。
 
 ## 功能
 
@@ -52,6 +58,7 @@ data/
 - 省/市/区县边界与动态名称
 - 顶部居中逆地理编码位置
 - 标签/分类筛选/详情、路线、区域（由后台数据驱动）
+- 点位聚合：`vendor/supercluster.min.js`（supercluster 9.1.0，ISC），按视口与缩放聚合，点击聚合点下钻
 
 ## 部署
 
