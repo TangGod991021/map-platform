@@ -5,11 +5,12 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy.exc import OperationalError
 
 from app.api.admin import router as admin_router
 from app.api.map_public import router as public_router
 from app.config import ensure_dirs, settings
-from app.database import SessionLocal, init_db
+from app.database import SessionLocal
 from app.seed import seed_data
 
 ensure_dirs()
@@ -17,9 +18,12 @@ ensure_dirs()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_db()
-    async with SessionLocal() as db:
-        await seed_data(db)
+    # 表结构由 Alembic 管理；首次启动前执行：alembic upgrade head
+    try:
+        async with SessionLocal() as db:
+            await seed_data(db)
+    except OperationalError as exc:
+        raise RuntimeError("数据库表不存在，请先执行 `alembic upgrade head`") from exc
     yield
 
 

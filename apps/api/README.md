@@ -20,13 +20,31 @@ python -m venv .venv
 
 pip install -e .
 cp .env.example .env
+alembic upgrade head
 uvicorn app.main:app --reload --port 8000
 ```
 
 - Swagger：<http://127.0.0.1:8000/docs>
 - 默认管理员：`admin / admin123`（生产必须修改）
 - 开发数据库：`data/map_platform.db`（SQLite）
-- 启动时自动建表并写入种子数据
+- 表结构由 Alembic 管理；启动时写入种子数据
+
+## 数据库迁移
+
+改完 `app/models/` 后：
+
+```bash
+# 生成迁移脚本（先确认应用能连到数据库）
+alembic revision --autogenerate -m "add xxx field"
+# 检查生成的迁移文件后再应用
+alembic upgrade head
+# 回退一版
+alembic downgrade -1
+```
+
+- 迁移脚本在 `alembic/versions/`，与代码一起提交；
+- 线上禁止手改表结构，统一走 `alembic upgrade head`；
+- 已存在的老库首次接入时用 `alembic stamp head` 标记基线。
 
 ## 生产数据库
 
@@ -86,8 +104,11 @@ app/
 ├── schemas/           # Pydantic
 ├── services/          # 业务逻辑
 └── api/               # 管理 / 公开路由
+alembic/
+├── env.py             # 迁移环境（复用 app.config.settings 连接串）
+└── versions/          # 迁移脚本
 scripts/
-├── init_db.py
+├── init_db.py         # alembic upgrade head + 种子数据
 └── publish_snapshot.py
 ```
 

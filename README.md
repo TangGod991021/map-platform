@@ -21,6 +21,7 @@ map-platform/
 │   │   │   ├── services/    # auth / map / publish
 │   │   │   ├── seed.py
 │   │   │   └── main.py
+│   │   ├── alembic/         # 数据库迁移
 │   │   └── scripts/
 │   ├── admin-web/           # Vue3 管理后台
 │   │   └── src/
@@ -57,13 +58,14 @@ python -m venv .venv
 
 pip install -e .
 cp .env.example .env
+alembic upgrade head
 uvicorn app.main:app --reload --port 8000
 ```
 
 - Swagger：<http://127.0.0.1:8000/docs>
 - 默认管理员：`admin / admin123`
 - 开发数据库：`apps/api/data/map_platform.db`（SQLite）
-- 启动时自动建表 + 种子数据
+- 表结构由 Alembic 迁移管理（`alembic upgrade head`），启动时写入种子数据
 
 ### 2. 管理后台
 

@@ -5,4 +5,5 @@ cd "$(dirname "$0")/../apps/api"
 source .venv/bin/activate
 pip install -e .
 [ -f .env ] || cp .env.example .env
+alembic upgrade head
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000

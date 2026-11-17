@@ -8,4 +8,5 @@ pip install -e .
 if not exist .env (
   copy .env.example .env
 )
+alembic upgrade head
 uvicorn app.main:app --reload --port 8000
