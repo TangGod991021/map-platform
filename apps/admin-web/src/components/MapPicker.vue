@@ -5,7 +5,13 @@
       {{ Number(modelValue?.lng || 0).toFixed(6) }}, {{ Number(modelValue?.lat || 0).toFixed(6) }}
     </span>
 
-    <el-dialog v-model="visible" title="地图选点" width="760px">
+    <el-dialog
+      v-model="visible"
+      title="地图选点"
+      width="760px"
+      @opened="onOpened"
+      @closed="onClosed"
+    >
       <el-alert
         v-if="!tk"
         title="未配置 VITE_TIANDITU_TK，当前只能手动输入坐标"
@@ -35,13 +41,14 @@
 </template>
 
 <script setup>
-import { nextTick, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref } from 'vue'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 
 const props = defineProps({
   modelValue: {
     type: Object,
-    default: () => ({ lng: 106.6302, lat: 26.647, })
+    default: () => ({ lng: 106.6302, lat: 26.647 })
   }
 })
 const emit = defineEmits(['update:modelValue'])
@@ -53,46 +60,41 @@ const manualLng = ref(Number(props.modelValue?.lng || 106.6302))
 const manualLat = ref(Number(props.modelValue?.lat || 26.647))
 let map = null
 
-const loadScript = () =>
-  new Promise((resolve, reject) => {
-    if (window.T) return resolve()
-    const existing = document.querySelector('script[data-tianditu]')
-    if (existing) {
-      existing.addEventListener('load', resolve)
-      existing.addEventListener('error', reject)
-      return
-    }
-    const script = document.createElement('script')
-    script.dataset.tianditu = '1'
-    script.src = `https://api.tianditu.gov.cn/api?v=4.0&tk=${encodeURIComponent(tk)}`
-    script.onload = resolve
-    script.onerror = reject
-    document.head.appendChild(script)
-  })
+// 天地图卫星影像 WMTS；Leaflet 占位符为 {z} / {x} / {y}
+const tiandituTileUrl = () =>
+  'https://t0.tianditu.gov.cn/img_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0' +
+  '&LAYER=img&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles' +
+  `&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=${encodeURIComponent(tk)}`
 
 const initMap = () => {
   if (!mapRef.value) return
   if (!map) {
-    map = new window.T.Map(mapRef.value)
-    map.enableScrollWheelZoom(true)
+    map = L.map(mapRef.value, {
+      zoomControl: true,
+      attributionControl: false,
+      minZoom: 6,
+      maxZoom: 18
+    })
+    L.tileLayer(tiandituTileUrl(), { maxZoom: 18 }).addTo(map)
   }
-  map.centerAndZoom(new window.T.LngLat(manualLng.value, manualLat.value), 13)
+  map.setView([manualLat.value, manualLng.value], 13)
+  map.invalidateSize()
 }
 
-const open = async () => {
+const open = () => {
   manualLng.value = Number(props.modelValue?.lng || 106.6302)
   manualLat.value = Number(props.modelValue?.lat || 26.647)
   visible.value = true
+}
+
+const onOpened = () => {
   if (!tk) return
-  await nextTick()
-  try {
-    await loadScript()
-    await new Promise((resolve) => setTimeout(resolve, 380))
-    await nextTick()
-    initMap()
-  } catch (error) {
-    ElMessage.error('天地图加载失败，请检查 VITE_TIANDITU_TK 与域名白名单')
-  }
+  initMap()
+}
+
+const onClosed = () => {
+  // 地图实例保留在弹窗 DOM 中，下次打开只需重新计算尺寸并定位
+  if (map) map.closePopup()
 }
 
 const useCenter = () => {
