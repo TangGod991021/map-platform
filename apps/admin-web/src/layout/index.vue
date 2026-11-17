@@ -28,6 +28,8 @@
           </template>
           <el-menu-item index="/map/category">分类管理</el-menu-item>
           <el-menu-item index="/map/label">标签管理</el-menu-item>
+          <el-menu-item index="/map/route">路线管理</el-menu-item>
+          <el-menu-item index="/map/area">区域管理</el-menu-item>
           <el-menu-item index="/map/release">发布管理</el-menu-item>
         </el-sub-menu>
       </el-menu>

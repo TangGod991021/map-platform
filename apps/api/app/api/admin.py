@@ -73,6 +73,16 @@ async def get_routers(user=Depends(get_current_user)):
                         "meta": {"title": "标签管理", "icon": "Location"},
                     },
                     {
+                        "name": "MapRoute",
+                        "path": "/map/route",
+                        "meta": {"title": "路线管理", "icon": "Guide"},
+                    },
+                    {
+                        "name": "MapArea",
+                        "path": "/map/area",
+                        "meta": {"title": "区域管理", "icon": "Grid"},
+                    },
+                    {
                         "name": "MapRelease",
                         "path": "/map/release",
                         "meta": {"title": "发布管理", "icon": "Upload"},
@@ -262,7 +272,10 @@ async def route_create(
     user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    route = await map_service.create_route(db, payload)
+    try:
+        route = await map_service.create_route(db, payload)
+    except Exception as exc:  # noqa: BLE001
+        _raise_service_error(exc)
     return ok(map_service.route_to_dict(route), "新增成功")
 
 
@@ -305,7 +318,10 @@ async def area_create(
     user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    area = await map_service.create_area(db, payload)
+    try:
+        area = await map_service.create_area(db, payload)
+    except Exception as exc:  # noqa: BLE001
+        _raise_service_error(exc)
     return ok(map_service.area_to_dict(area), "新增成功")
 
 

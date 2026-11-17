@@ -5,6 +5,8 @@ const Layout = () => import('@/layout/index.vue')
 const Dashboard = () => import('@/views/dashboard/index.vue')
 const MapCategory = () => import('@/views/map/category/index.vue')
 const MapLabel = () => import('@/views/map/label/index.vue')
+const MapRoute = () => import('@/views/map/route/index.vue')
+const MapArea = () => import('@/views/map/area/index.vue')
 const MapRelease = () => import('@/views/map/release/index.vue')
 
 const routes = [
@@ -21,6 +23,8 @@ const routes = [
       { path: 'dashboard', component: Dashboard, meta: { title: '首页' } },
       { path: 'map/category', component: MapCategory, meta: { title: '分类管理' } },
       { path: 'map/label', component: MapLabel, meta: { title: '标签管理' } },
+      { path: 'map/route', component: MapRoute, meta: { title: '路线管理' } },
+      { path: 'map/area', component: MapArea, meta: { title: '区域管理' } },
       { path: 'map/release', component: MapRelease, meta: { title: '发布管理' } }
     ]
   },

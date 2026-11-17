@@ -45,6 +45,11 @@ def validate_coordinate(lng: float, lat: float) -> None:
         raise ValueError("坐标不在贵州省范围内")
 
 
+def validate_points(points: list[list[float]], minimum: int, label: str) -> None:
+    if len(points) < minimum:
+        raise ValueError(f"{label}至少需要 {minimum} 个顶点")
+
+
 def category_to_dict(category: MapCategory) -> dict:
     return {
         "id": category.id,
@@ -280,6 +285,7 @@ async def list_routes(db: AsyncSession) -> list[dict]:
 
 
 async def create_route(db: AsyncSession, payload: RouteCreate) -> MapRoute:
+    validate_points(payload.points, 2, "路线")
     data = payload.model_dump()
     data["points"] = dump_list(data["points"])
     route = MapRoute(**data)
@@ -295,6 +301,7 @@ async def update_route(db: AsyncSession, route_id: int, payload: RouteUpdate) ->
         raise LookupError("路线不存在")
     data = payload.model_dump(exclude_unset=True)
     if "points" in data:
+        validate_points(data["points"], 2, "路线")
         data["points"] = dump_list(data["points"])
     for key, value in data.items():
         setattr(route, key, value)
@@ -317,6 +324,7 @@ async def list_areas(db: AsyncSession) -> list[dict]:
 
 
 async def create_area(db: AsyncSession, payload: AreaCreate) -> MapArea:
+    validate_points(payload.polygon, 3, "区域")
     data = payload.model_dump()
     data["polygon"] = dump_list(data["polygon"])
     area = MapArea(**data)
@@ -332,6 +340,7 @@ async def update_area(db: AsyncSession, area_id: int, payload: AreaUpdate) -> Ma
         raise LookupError("区域不存在")
     data = payload.model_dump(exclude_unset=True)
     if "polygon" in data:
+        validate_points(data["polygon"], 3, "区域")
         data["polygon"] = dump_list(data["polygon"])
     for key, value in data.items():
         setattr(area, key, value)
