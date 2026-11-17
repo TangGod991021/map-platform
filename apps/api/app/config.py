@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     )
     upload_dir: str = str(API_ROOT / "data" / "uploads")
     map_publish_dir: str = str(PROJECT_ROOT / "apps" / "map-web" / "data")
+    # 贵州省界 GeoJSON；生产环境可指向独立部署的边界文件
+    geo_boundary_path: str = str(PROJECT_ROOT / "apps" / "map-web" / "data" / "guizhou.json")
     tianditu_tk: str = ""
 
     model_config = SettingsConfigDict(

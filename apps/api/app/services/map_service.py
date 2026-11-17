@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.geo import is_in_guizhou
 from app.models.map import MapArea, MapCategory, MapLabel, MapRelease, MapRoute
 from app.schemas.map import (
     AreaCreate,
@@ -16,9 +17,6 @@ from app.schemas.map import (
     RouteCreate,
     RouteUpdate,
 )
-
-# 贵州粗略外接矩形；后续可替换为省界多边形精确校验
-GUZHOU_BBOX = (103.3, 24.3, 109.9, 29.5)
 
 
 def parse_list(raw: str | None) -> list:
@@ -40,8 +38,7 @@ def strip_html(value: str | None) -> str:
 
 
 def validate_coordinate(lng: float, lat: float) -> None:
-    min_lng, min_lat, max_lng, max_lat = GUZHOU_BBOX
-    if not (min_lng <= lng <= max_lng and min_lat <= lat <= max_lat):
+    if not is_in_guizhou(float(lng), float(lat)):
         raise ValueError("坐标不在贵州省范围内")
 
 
