@@ -1,0 +1,9 @@
+{
+  "navigationStyle": "custom",
+  "navigationBarTitleText": "黔山漫游 2.5D 城市地图",
+  "navigationBarBackgroundColor": "#050914",
+  "navigationBarTextStyle": "white",
+  "backgroundColor": "#050914",
+  "disableScroll": true,
+  "usingComponents": {}
+}

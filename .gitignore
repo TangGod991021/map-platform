@@ -1,0 +1,33 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# 本地配置
+apps/api/.env
+apps/admin-web/.env
+
+# 运行数据
+apps/api/data/
+apps/api/logs/
+
+# 前端
+apps/admin-web/node_modules/
+apps/admin-web/dist/
+
+# 发布快照（由后台生成）
+apps/map-web/data/map.json
+apps/map-web/data/map.json.tmp
+apps/map-web/data/manifest.json
+
+# 工具输出
+tools/tiles/out/
+
+# 系统
+.DS_Store
+Thumbs.db
+*.log

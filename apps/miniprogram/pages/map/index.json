@@ -1,0 +1,8 @@
+{
+  "navigationBarTitleText": "黔山漫游 · 卫星地图",
+  "navigationBarBackgroundColor": "#050914",
+  "navigationBarTextStyle": "white",
+  "backgroundColor": "#050914",
+  "disableScroll": true,
+  "usingComponents": {}
+}

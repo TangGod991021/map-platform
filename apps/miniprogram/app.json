@@ -1,0 +1,16 @@
+{
+  "pages": [
+    "pages/map/index",
+    "pages/map25d/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "黔山漫游",
+    "navigationBarBackgroundColor": "#050914",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#050914",
+    "backgroundTextStyle": "light"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

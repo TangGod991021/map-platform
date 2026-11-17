@@ -1,0 +1,91 @@
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei',
+    sans-serif;
+  color: #0f172a;
+  background: #f5f7fb;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.page-card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 18px;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.toolbar-spacer {
+  flex: 1;
+}
+
+.muted {
+  color: #64748b;
+}
+
+.coord-inputs {
+  display: flex;
+  gap: 10px;
+}
+
+.map-picker-map {
+  width: 100%;
+  height: 420px;
+  position: relative;
+  background: #050914;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.map-picker-crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 26px;
+  height: 26px;
+  margin-left: -13px;
+  margin-top: -13px;
+  border: 2px solid #00e5ff;
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.6);
+}
+
+.map-picker-crosshair::before,
+.map-picker-crosshair::after {
+  content: '';
+  position: absolute;
+  background: #00e5ff;
+}
+
+.map-picker-crosshair::before {
+  left: 50%;
+  top: -8px;
+  bottom: -8px;
+  width: 2px;
+  margin-left: -1px;
+}
+
+.map-picker-crosshair::after {
+  top: 50%;
+  left: -8px;
+  right: -8px;
+  height: 2px;
+  margin-top: -1px;
+}

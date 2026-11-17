@@ -1,0 +1,17 @@
+[Unit]
+Description=Qianshan Manyou API (map-platform)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/data/map-platform/apps/api
+EnvironmentFile=/data/map-platform/apps/api/.env
+ExecStart=/data/map-platform/apps/api/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 11000
+Restart=always
+RestartSec=3
+# 如需限制资源，可按服务器情况增加
+# MemoryMax=1G
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,82 @@
+{
+  "description": "黔山漫游微信小程序（天地图 web-view + 2.5D 实验页）",
+  "packOptions": {
+    "ignore": [],
+    "include": []
+  },
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "newFeature": true,
+    "coverView": true,
+    "showShadowRootInWxmlPanel": true,
+    "compileHotReLoad": true,
+    "compileWorklet": false,
+    "uglifyFileName": false,
+    "uploadWithSourceMap": true,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "minifyWXSS": true,
+    "minifyWXML": true,
+    "localPlugins": false,
+    "disableUseStrict": false,
+    "useCompilerPlugins": false,
+    "condition": false,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    }
+  },
+  "compileType": "miniprogram",
+  "libVersion": "3.6.3",
+  "appid": "wx689754d61e7bdf44",
+  "projectname": "map-platform-miniprogram",
+  "condition": {
+    "miniprogram": {
+      "list": [
+        {
+          "name": "卫星地图（默认）",
+          "pathName": "pages/map/index",
+          "query": "",
+          "scene": null
+        },
+        {
+          "name": "2.5D 核心区（实验）",
+          "pathName": "pages/map25d/index",
+          "query": "tile=hybrid&area=jiaxiu",
+          "scene": null
+        },
+        {
+          "name": "2.5D 示意演示",
+          "pathName": "pages/map25d/index",
+          "query": "tile=demo",
+          "scene": null
+        },
+        {
+          "name": "W1 · OSM 单瓦片",
+          "pathName": "pages/map25d/index",
+          "query": "tile=osm&debug=1",
+          "scene": null
+        },
+        {
+          "name": "W1 · 合成 5K 压测",
+          "pathName": "pages/map25d/index",
+          "query": "tile=synthetic&debug=1",
+          "scene": null
+        },
+        {
+          "name": "W2 · 混合方案预览",
+          "pathName": "pages/map25d/index",
+          "query": "tile=hybrid&debug=1",
+          "scene": null
+        }
+      ]
+    }
+  },
+  "simulatorPluginLibVersion": {},
+  "editorSetting": {}
+}

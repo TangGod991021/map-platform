@@ -1,0 +1,174 @@
+<view class="page">
+  <!-- 顶部 HUD：独立视图层，不覆盖 canvas -->
+  <view
+    class="topbar"
+    style="padding-top:{{statusBarHeight}}px; padding-right:{{capsuleRight}}px;"
+  >
+    <view class="topbar-main">
+      <view class="brand-block">
+        <view class="brand-row">
+          <view class="brand-mark"></view>
+          <view class="brand">QIANSHAN <text class="brand-accent">2.5D</text></view>
+        </view>
+        <view class="brand-sub">DIGITAL TWIN · {{areaName || meta.name}}</view>
+      </view>
+
+      <view class="status-block">
+        <view class="live"><view class="live-dot"></view>LIVE</view>
+        <view class="clock">{{clock}}</view>
+        <view
+          wx:if="{{dataKey === 'hybrid'}}"
+          class="area-pill"
+          bindtap="onSwitchArea"
+          hover-class="area-pill-hover"
+        >切换区域</view>
+      </view>
+    </view>
+
+    <view wx:if="{{debug}}" class="perf-line">
+      FPS {{fps}} · CALLS {{drawCalls}} · TRIS {{triangles}} · GEO {{geometries}}/{{textures}} · BUILD {{buildMs}}ms
+    </view>
+  </view>
+
+  <!-- 3D 画布：只占中间区域，不与 HUD 重叠 -->
+  <view class="stage">
+    <canvas
+      type="webgl"
+      id="webgl"
+      class="webgl"
+      hidden="{{!!error}}"
+      disable-scroll="{{true}}"
+      bindtouchstart="onTouchStart"
+      bindtouchmove="onTouchMove"
+      bindtouchend="onTouchEnd"
+    ></canvas>
+
+    <view class="vignette"></view>
+    <view class="scanlines"></view>
+
+    <view wx:if="{{loading}}" class="overlay">
+      <view class="radar">
+        <view class="radar-ring"></view>
+        <view class="radar-sweep"></view>
+        <view class="radar-core"></view>
+      </view>
+      <view class="loading-title">正在接入城市数据</view>
+      <view class="loading-sub">QIANSHAN DIGITAL TWIN · BOOTING</view>
+      <view class="loading-dots">
+        <view class="loading-dot"></view>
+        <view class="loading-dot"></view>
+        <view class="loading-dot"></view>
+      </view>
+    </view>
+
+    <view wx:if="{{error}}" class="overlay overlay-error">
+      <view class="error-card">
+        <view class="error-badge">!</view>
+        <view class="error-title">场景加载失败</view>
+        <view class="error-text">{{error}}</view>
+        <view class="error-hint">请确认微信已更新到最新版本，并允许使用 WebGL。</view>
+        <view class="error-actions">
+          <button class="sheet-btn sheet-btn-primary" bindtap="onRetry">重新加载</button>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 底部面板：加载/错误/筛选控制/点位详情 -->
+  <view class="bottom">
+    <view wx:if="{{loading}}" class="bottom-status">
+      <view class="bottom-status-dot"></view>
+      <text>正在接入城市数据…</text>
+    </view>
+
+    <view wx:elif="{{error}}" class="bottom-error">
+      <view class="bottom-error-text">{{error}}</view>
+      <button class="sheet-btn sheet-btn-primary" bindtap="onRetry">重新加载</button>
+    </view>
+
+    <view wx:elif="{{!selected}}" class="bottom-main">
+      <scroll-view
+        class="filter-rail"
+        scroll-x="{{true}}"
+        enhanced="{{true}}"
+        show-scrollbar="{{false}}"
+      >
+        <view
+          wx:for="{{filters}}"
+          wx:key="key"
+          class="chip {{activeFilter === item.key ? 'chip-active' : ''}}"
+          data-key="{{item.key}}"
+          bindtap="onFilter"
+          hover-class="chip-hover"
+        >
+          <view
+            class="chip-dot"
+            style="background:{{item.color}}; box-shadow: 0 0 10rpx {{item.color}};"
+          ></view>
+          <text>{{item.label}}</text>
+        </view>
+        <view class="node-count">{{poiCount}} NODES</view>
+      </scroll-view>
+
+      <view class="control-row">
+        <view class="compass-inline" bindtap="onCompassTap" hover-class="compass-hover">
+          <view class="compass-ring"></view>
+          <view class="compass-needle" style="transform: rotate({{compassDeg}}deg);"></view>
+          <view class="compass-n">N</view>
+        </view>
+
+        <button class="dock-btn" bindtap="onZoomIn" hover-class="dock-btn-hover" aria-label="放大">＋</button>
+        <button class="dock-btn" bindtap="onZoomOut" hover-class="dock-btn-hover" aria-label="缩小">－</button>
+        <button class="dock-btn" bindtap="onRotateLeft" hover-class="dock-btn-hover" aria-label="向左旋转">↺</button>
+        <button class="dock-btn" bindtap="onRotateRight" hover-class="dock-btn-hover" aria-label="向右旋转">↻</button>
+        <button class="dock-btn dock-reset" bindtap="onReset" hover-class="dock-btn-hover" aria-label="复位视角">RESET</button>
+        <view class="zoom-readout">{{zoomPct}}%</view>
+      </view>
+
+      <scroll-view
+        wx:if="{{dataKey === 'hybrid'}}"
+        class="area-rail"
+        scroll-x="{{true}}"
+        enhanced="{{true}}"
+        show-scrollbar="{{false}}"
+      >
+        <view class="area-rail-label">区域</view>
+        <view
+          wx:for="{{previewAreas}}"
+          wx:key="key"
+          class="area-chip {{activeAreaKey === item.key ? 'area-chip-active' : ''}}"
+          data-key="{{item.key}}"
+          bindtap="onSelectArea"
+          hover-class="area-chip-hover"
+        >{{item.name}}</view>
+      </scroll-view>
+
+      <view class="hint {{hintVisible ? 'is-visible' : ''}}">
+        拖拽平移 · 双指缩放 · 点击节点
+      </view>
+    </view>
+
+    <view wx:else class="info-sheet">
+      <view class="sheet-edge"></view>
+      <view class="sheet-head">
+        <view class="sheet-title-wrap">
+          <view
+            class="sheet-type-dot"
+            style="background:{{selected.typeColor}}; box-shadow: 0 0 16rpx {{selected.typeColor}};"
+          ></view>
+          <view class="sheet-name">{{selected.name}}</view>
+        </view>
+        <view class="sheet-close" bindtap="onCloseCard" hover-class="sheet-close-hover">×</view>
+      </view>
+      <view class="sheet-tags">
+        <view class="tag tag-accent">{{selected.typeLabel}}</view>
+        <view class="tag tag-mono">{{selected.coord}}</view>
+      </view>
+      <view class="sheet-desc">{{selected.desc}}</view>
+      <view class="sheet-actions">
+        <button class="sheet-btn sheet-btn-primary" bindtap="onFocusSelected">定位到此处</button>
+        <button class="sheet-btn sheet-btn-ghost" bindtap="onCloseCard">收起</button>
+      </view>
+    </view>
+  </view>
+</view>

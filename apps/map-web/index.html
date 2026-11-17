@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+  />
+  <meta name="format-detection" content="telephone=no" />
+  <title>黔山漫游 · 卫星地图</title>
+  <script src="./config.js"></script>
+  <script src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
+  <style>
+    :root {
+      --bg: #050914;
+      --panel: rgba(8, 14, 30, 0.86);
+      --line: rgba(0, 229, 255, 0.28);
+      --cyan: #00e5ff;
+      --text: #f1f5f9;
+      --text-2: #94a3b8;
+      --text-3: #7b8aa0;
+      --mono: "Roboto Mono", "DIN Alternate", monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body, #map {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    /* 顶部居中：当前所在地 */
+    .location-bar {
+      position: fixed;
+      top: calc(10px + env(safe-area-inset-top));
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9500;
+      max-width: 88%;
+      padding: 7px 14px;
+      border-radius: 12px;
+      background: rgba(8, 14, 30, 0.86);
+      border: 1px solid rgba(0, 229, 255, 0.28);
+      text-align: center;
+      pointer-events: none;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .location-main {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #f1f5f9;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .location-sub {
+      margin-top: 2px;
+      font-size: 10px;
+      letter-spacing: 1px;
+      color: var(--text-2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .location-sub.hidden { display: none; }
+
+    /* 底部右侧：全贵州 */
+    .fit-btn {
+      position: fixed;
+      right: 14px;
+      bottom: calc(14px + env(safe-area-inset-bottom));
+      z-index: 9000;
+      height: 32px;
+      padding: 0 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(0, 229, 255, 0.4);
+      background: rgba(8, 14, 30, 0.86);
+      color: var(--cyan);
+      font-size: 12px;
+      letter-spacing: 1px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    /* 行政区划名称 */
+    .labels-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 8000;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .map-label {
+      position: absolute;
+      left: 0;
+      top: 0;
+      white-space: nowrap;
+      transform: translate(-50%, -50%);
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 6px rgba(0, 0, 0, 0.55);
+      pointer-events: auto;
+      cursor: pointer;
+      user-select: none;
+      transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+    }
+    .map-label:hover {
+      color: #ffffff;
+      background: rgba(0, 229, 255, 0.2);
+      border-color: rgba(0, 229, 255, 0.55);
+    }
+    .map-label.hidden { display: none; }
+    .map-label.level-province {
+      font-size: 22px; font-weight: 800; letter-spacing: 3px; color: #f8fafc;
+      padding: 4px 10px; background: rgba(2, 6, 16, 0.35);
+      border: 1px solid rgba(0, 229, 255, 0.25); border-radius: 8px;
+    }
+    .map-label.level-city {
+      font-size: 15px; font-weight: 700; color: #f8fafc;
+      padding: 2px 7px; background: rgba(2, 6, 16, 0.35); border-radius: 5px;
+    }
+    .map-label.level-county {
+      font-size: 11px; font-weight: 500; color: #e2e8f0;
+      padding: 1px 5px; background: rgba(2, 6, 16, 0.25); border-radius: 4px;
+    }
+    .map-label.level-town {
+      font-size: 9px; color: #cbd5e1; opacity: 0.85;
+      padding: 1px 4px; background: rgba(2, 6, 16, 0.18); border-radius: 3px;
+    }
+
+    /* 底部分类筛选 */
+    .filters {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: calc(10px + env(safe-area-inset-bottom));
+      z-index: 9999;
+      display: flex;
+      gap: 8px;
+      padding: 8px 14px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .filters::-webkit-scrollbar { display: none; }
+    .chip {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      height: 38px;
+      padding: 0 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(56, 189, 248, 0.18);
+      background: var(--panel);
+      color: var(--text-2);
+      font-size: 12px;
+      letter-spacing: 1px;
+      transition: all 160ms ease;
+    }
+    .chip.active {
+      color: var(--cyan);
+      border-color: rgba(0, 229, 255, 0.55);
+      background: rgba(0, 229, 255, 0.1);
+      box-shadow: 0 0 16px rgba(0, 229, 255, 0.16);
+    }
+    .chip .dot {
+      width: 7px;
+      height: 7px;
+      margin-right: 7px;
+      border-radius: 50%;
+    }
+    .chip .count {
+      margin-left: 6px;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-3);
+    }
+
+    /* 底部点位卡 */
+    .poi-card {
+      position: fixed;
+      left: 12px;
+      right: 12px;
+      bottom: calc(64px + env(safe-area-inset-bottom));
+      z-index: 10000;
+      padding: 16px 16px 14px;
+      border-radius: 18px;
+      background: rgba(8, 14, 30, 0.94);
+      border: 1px solid rgba(0, 229, 255, 0.32);
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+      color: var(--text);
+      transform: translateY(16px);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 220ms ease, opacity 220ms ease;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+    .poi-card.show {
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .card-close {
+      position: absolute;
+      right: 10px;
+      top: 10px;
+      width: 30px;
+      height: 30px;
+      border: 0;
+      border-radius: 50%;
+      background: rgba(30, 41, 59, 0.8);
+      color: var(--text-2);
+      font-size: 18px;
+      line-height: 30px;
+      text-align: center;
+    }
+    .card-cat {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: rgba(0, 229, 255, 0.12);
+      border: 1px solid rgba(0, 229, 255, 0.35);
+      color: var(--cyan);
+      font-size: 10px;
+      letter-spacing: 1px;
+    }
+    .card-name {
+      margin-top: 8px;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+    .card-address {
+      margin-top: 4px;
+      font-size: 11px;
+      color: var(--text-3);
+    }
+    .card-desc {
+      margin-top: 8px;
+      font-size: 12px;
+      line-height: 1.55;
+      color: var(--text-2);
+    }
+    .card-actions { margin-top: 12px; display: flex; gap: 10px; }
+    .card-btn {
+      flex: 1;
+      height: 38px;
+      border: 0;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #00e5ff, #38bdf8);
+      color: #04121f;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .card-btn.ghost {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      color: var(--text-2);
+      font-weight: 400;
+    }
+
+    /* 错误 */
+    .error {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      z-index: 10001;
+      width: 78%;
+      max-width: 320px;
+      transform: translate(-50%, -50%);
+      padding: 18px 16px;
+      border-radius: 14px;
+      background: rgba(8, 14, 30, 0.96);
+      border: 1px solid rgba(248, 113, 113, 0.45);
+      color: var(--text);
+      text-align: center;
+    }
+    .error-title { color: #f87171; font-size: 15px; font-weight: 700; }
+    .error-text { margin-top: 8px; font-size: 12px; line-height: 1.6; color: var(--text-2); }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <div id="labels" class="labels-layer"></div>
+
+  <div id="locationBar" class="location-bar">
+    <div id="locationMain" class="location-main">贵州省</div>
+    <div id="locationSub" class="location-sub hidden"></div>
+  </div>
+
+  <button id="fitGuizhou" class="fit-btn">全贵州</button>
+
+  <div id="filters" class="filters"></div>
+
+  <div id="card" class="poi-card">
+    <button id="cardClose" class="card-close">×</button>
+    <div id="cardCat" class="card-cat"></div>
+    <div id="cardName" class="card-name"></div>
+    <div id="cardAddress" class="card-address"></div>
+    <div id="cardDesc" class="card-desc"></div>
+    <div class="card-actions">
+      <button id="cardFocus" class="card-btn">地图居中</button>
+      <button id="cardClose2" class="card-btn ghost">收起</button>
+    </div>
+  </div>
+
+
+  <div id="error" class="error" style="display:none;">
+    <div class="error-title" id="errorTitle">天地图 Key 未配置</div>
+    <div class="error-text" id="errorText">请在服务器编辑 /var/www/tianmap/config.js，填入天地图「浏览器端」Key 后刷新。</div>
+  </div>
+
+  <script>
+    var TK = (window.TIANDITU_TK || '').trim();
+    var CFG = window.MAP_CONFIG || {};
+    // 点位/路线/区域默认关闭；后续由后端/后台动态下发时再打开
+    var SHOW_POIS = CFG.showPois === true;
+    var SHOW_ROUTES = CFG.showRoutes === true;
+    var SHOW_AREAS = CFG.showAreas === true;
+    var CATEGORIES = [];
+    var CAT_MAP = {};
+    var POIS = [];
+    var markers = [];
+    var cityOverlays = [];
+    var countyOverlays = [];
+    var townOverlays = [];
+    var LABELS = [];
+    var labelPending = false;
+    var regionData = null;
+    var geoTimer = null;
+    var lastGeoKey = '';
+    var geoCache = {};
+    var currentCat = 'all';
+    var activePoi = null;
+    var map = null;
+
+    function showError(title, text) {
+      document.getElementById('errorTitle').innerText = title;
+      document.getElementById('errorText').innerText = text;
+      document.getElementById('error').style.display = 'block';
+    }
+
+    if (!TK || TK === 'YOUR_TIANDITU_TK') {
+      showError('天地图 Key 未配置', '请在服务器编辑 /var/www/tianmap/config.js，填入天地图「浏览器端」Key 后刷新。');
+    } else {
+      var api = document.createElement('script');
+      api.src = 'https://api.tianditu.gov.cn/api?v=4.0&tk=' + encodeURIComponent(TK);
+      api.onload = initMap;
+      api.onerror = function () {
+        showError('天地图 API 加载失败', '请检查网络、Key 类型与域名限制。');
+      };
+      document.head.appendChild(api);
+    }
+
+    function getQuery(name, fallback) {
+      var match = new RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+      return match ? decodeURIComponent(match[1]) : fallback;
+    }
+
+    function tileUrl(layer) {
+      return 'https://t0.tianditu.gov.cn/' + layer +
+        '_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0' +
+        '&LAYER=' + layer.replace('_w', '') +
+        '&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles' +
+        '&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=' + encodeURIComponent(TK);
+    }
+
+    function initMap() {
+      var lng = parseFloat(getQuery('lng', (CFG.center && CFG.center.lng) || 106.6302));
+      var lat = parseFloat(getQuery('lat', (CFG.center && CFG.center.lat) || 26.6470));
+      var zoom = parseInt(getQuery('zoom', CFG.zoom || 13), 10);
+
+      // 只加载卫星影像；不加载 cia_w 注记层，去掉地铁线/道路/地名等官方标注
+      var imgLayer = new T.TileLayer(tileUrl('img'), { minZoom: 1, maxZoom: 18 });
+      var layers = [imgLayer];
+
+      // 如需保留天地图官方注记，把 config.js 的 showTiandituLabels 改为 true
+      if (CFG.showTiandituLabels) {
+        layers.push(new T.TileLayer(tileUrl('cia'), { minZoom: 1, maxZoom: 18 }));
+      }
+
+      map = new T.Map('map', { layers: layers, minZoom: 6, maxZoom: 18 });
+      map.centerAndZoom(new T.LngLat(lng, lat), zoom);
+      map.enableScrollWheelZoom(true);
+      if (map.enableContinuousZoom) map.enableContinuousZoom();
+
+      map.addEventListener('move', scheduleLabels);
+      map.addEventListener('moveend', scheduleGeocode);
+      map.addEventListener('zoomend', function () {
+        applyBoundaryVisibility(map.getZoom());
+        scheduleLabels();
+      });
+      map.addEventListener('resize', scheduleLabels);
+
+      window.__map = map;
+      loadData();
+    }
+
+    function loadData() {
+      var version = encodeURIComponent(CFG.dataVersion || '1');
+      var needPoiData = SHOW_POIS || SHOW_ROUTES || SHOW_AREAS;
+      var dataUrl = CFG.poisApi
+        ? CFG.poisApi + (CFG.poisApi.indexOf('?') >= 0 ? '&' : '?') + 'v=' + version
+        : './data/pois.json?v=' + version;
+
+      function jsonReq(url) {
+        return fetch(url).then(function (r) { return r.json(); }).catch(function () { return null; });
+      }
+
+      var dataReq = needPoiData
+        ? fetch(dataUrl, { cache: 'no-store' }).then(function (r) { return r.json(); })
+            .catch(function (err) {
+              console.error('[map] poi data load failed', err);
+              return { categories: [], pois: [], routes: [], areas: [] };
+            })
+        : Promise.resolve({ categories: [], pois: [], routes: [], areas: [] });
+
+      var provinceReq = jsonReq('./data/guizhou.json?v=' + version);
+      var citiesReq = jsonReq('./data/guizhou-cities.json?v=' + version);
+      var countiesReq = jsonReq('./data/guizhou-counties.json?v=' + version);
+      var townsReq = jsonReq('./data/guizhou-towns.json?v=' + version);
+
+      Promise.all([dataReq, provinceReq, citiesReq, countiesReq, townsReq])
+        .then(function (results) {
+          var data = results[0];
+          var province = results[1];
+          var cities = results[2];
+          var counties = results[3];
+          var towns = results[4];
+
+          if (province) renderBoundary(province, cities);
+          if (counties) renderCounties(counties);
+          if (towns) renderTownBoundaries(towns);
+
+          buildLabels(province, cities, counties, towns);
+          buildRegionIndex(counties, cities);
+          applyBoundaryVisibility(map.getZoom());
+          scheduleLabels();
+          scheduleGeocode();
+
+          if (!SHOW_POIS) {
+            document.getElementById('filters').style.display = 'none';
+            return;
+          }
+
+          CATEGORIES = data.categories || [];
+          POIS = data.pois || [];
+          CATEGORIES.forEach(function (c) { CAT_MAP[c.key] = c; });
+
+          if (SHOW_AREAS) renderAreas(data.areas || []);
+          if (SHOW_ROUTES) renderRoutes(data.routes || []);
+          renderMarkers();
+          renderFilters();
+        })
+        .catch(function (err) {
+          console.error('[map] data load failed', err);
+        });
+    }
+
+    function renderCounties(geojson) {
+      outerRings(geojson).forEach(function (ring) {
+        var pts = toLngLats(ring);
+        var halo = new T.Polyline(pts, {
+          color: '#38bdf8',
+          weight: 5,
+          opacity: 0.1,
+          interactive: false
+        });
+        var line = new T.Polyline(pts, {
+          color: '#7dd3fc',
+          weight: 1.5,
+          opacity: 0.55,
+          interactive: false
+        });
+        map.addOverLay(halo);
+        map.addOverLay(line);
+        countyOverlays.push(halo, line);
+      });
+    }
+
+    function renderTownBoundaries(geojson) {
+      function addTownLine(ring) {
+        if (!ring || ring.length < 2) return;
+        var line = new T.Polyline(toLngLats(ring), {
+          color: '#cbd5e1',
+          weight: 1.2,
+          opacity: 0.4,
+          interactive: false
+        });
+        map.addOverLay(line);
+        townOverlays.push(line);
+      }
+
+      (geojson.features || []).forEach(function (f) {
+        var g = f.geometry || {};
+        if (g.type === 'Polygon' && g.coordinates[0]) {
+          addTownLine(g.coordinates[0]);
+        } else if (g.type === 'MultiPolygon') {
+          (g.coordinates || []).forEach(function (poly) {
+            if (poly[0]) addTownLine(poly[0]);
+          });
+        } else if (g.type === 'LineString') {
+          addTownLine(g.coordinates);
+        } else if (g.type === 'MultiLineString') {
+          (g.coordinates || []).forEach(addTownLine);
+        }
+      });
+    }
+
+    function ringCenter(ring) {
+      if (!ring || !ring.length) return null;
+      var lng = 0;
+      var lat = 0;
+      for (var i = 0; i < ring.length; i++) {
+        lng += ring[i][0];
+        lat += ring[i][1];
+      }
+      return [lng / ring.length, lat / ring.length];
+    }
+
+    function buildLabels(province, cities, counties, towns) {
+      var layer = document.getElementById('labels');
+      layer.innerHTML = '';
+      LABELS = [];
+
+      function add(name, lng, lat, level, priority) {
+        if (!name || !isFinite(lng) || !isFinite(lat)) return;
+        LABELS.push({
+          name: name,
+          lng: lng,
+          lat: lat,
+          level: level,
+          priority: priority || 0
+        });
+      }
+
+      if (province && province.features && province.features[0]) {
+        var pf = province.features[0].properties || {};
+        var pc = pf.centroid || pf.center;
+        if (pc) add('贵州省', pc[0], pc[1], 'province');
+      }
+
+      (cities && cities.features || []).forEach(function (f) {
+        var p = f.properties || {};
+        var c = p.center || p.centroid;
+        if (c) add(shortCityName(p.name), c[0], c[1], 'city');
+      });
+
+      (counties && counties.features || []).forEach(function (f) {
+        var p = f.properties || {};
+        var c = p.center || p.centroid;
+        if (!c) return;
+        // 威宁是省直管县，位于贵州西北角；在市级视角也显示，避免左上角无标识
+        if (String(p.name).indexOf('威宁') === 0) {
+          add('威宁自治县', c[0], c[1], 'city', 10);
+          LABELS[LABELS.length - 1].targetZoom = 11;
+        }
+        add(displayCountyName(p.name), c[0], c[1], 'county');
+      });
+
+      (towns && towns.features || []).forEach(function (f) {
+        var p = f.properties || {};
+        var g = f.geometry || {};
+        var c = p.center || p.centroid;
+        if (!c && g.type === 'Point') c = g.coordinates;
+        if (!c && g.type === 'Polygon' && g.coordinates[0]) c = ringCenter(g.coordinates[0]);
+        if (!c && g.type === 'MultiPolygon' && g.coordinates && g.coordinates[0] && g.coordinates[0][0]) {
+          c = ringCenter(g.coordinates[0][0]);
+        }
+        if (c) add(p.name, c[0], c[1], 'town');
+      });
+
+      LABELS.forEach(function (item) {
+        var el = document.createElement('div');
+        el.className = 'map-label level-' + item.level + ' hidden';
+        el.innerText = item.name;
+        layer.appendChild(el);
+        el.addEventListener('click', function (ev) {
+          if (ev && ev.stopPropagation) ev.stopPropagation();
+          focusLabel(item);
+        });
+        item.el = el;
+      });
+
+      window.__labels = LABELS;
+    }
+
+    function featureBbox(feature) {
+      var g = (feature && feature.geometry) || {};
+      var coords = g.coordinates || [];
+      var minLng = 999, minLat = 999, maxLng = -999, maxLat = -999;
+      function walk(c) {
+        if (Array.isArray(c) && c.length && typeof c[0] === 'number') {
+          if (c[0] < minLng) minLng = c[0];
+          if (c[0] > maxLng) maxLng = c[0];
+          if (c[1] < minLat) minLat = c[1];
+          if (c[1] > maxLat) maxLat = c[1];
+        } else if (Array.isArray(c)) {
+          c.forEach(walk);
+        }
+      }
+      walk(coords);
+      if (minLng > maxLng) return null;
+      return [minLng, minLat, maxLng, maxLat];
+    }
+
+    function pointInRing(lng, lat, ring) {
+      var inside = false;
+      var j = ring.length - 1;
+      for (var i = 0; i < ring.length; i++) {
+        var xi = ring[i][0], yi = ring[i][1];
+        var xj = ring[j][0], yj = ring[j][1];
+        if ((yi > lat) !== (yj > lat) &&
+            lng < (xj - xi) * (lat - yi) / (yj - yi) + xi) {
+          inside = !inside;
+        }
+        j = i;
+      }
+      return inside;
+    }
+
+    function pointInFeature(lng, lat, feature) {
+      var g = (feature && feature.geometry) || {};
+      if (g.type === 'Polygon') {
+        return g.coordinates && g.coordinates[0] && pointInRing(lng, lat, g.coordinates[0]);
+      }
+      if (g.type === 'MultiPolygon') {
+        for (var i = 0; i < (g.coordinates || []).length; i++) {
+          var poly = g.coordinates[i];
+          if (poly && poly[0] && pointInRing(lng, lat, poly[0])) return true;
+        }
+      }
+      return false;
+    }
+
+    function buildRegionIndex(counties, cities) {
+      regionData = { counties: [], cityByAdcode: {} };
+      ((cities && cities.features) || []).forEach(function (f) {
+        var p = f.properties || {};
+        if (p.adcode) regionData.cityByAdcode[String(p.adcode)] = shortCityName(p.name);
+      });
+      ((counties && counties.features) || []).forEach(function (f) {
+        var p = f.properties || {};
+        var bbox = featureBbox(f);
+        if (!bbox) return;
+        regionData.counties.push({
+          name: p.name,
+          parent: p.parent && String(p.parent.adcode),
+          bbox: bbox,
+          feature: f
+        });
+      });
+    }
+
+    function findCounty(c) {
+      if (!regionData || !regionData.counties.length) return null;
+      for (var i = 0; i < regionData.counties.length; i++) {
+        var item = regionData.counties[i];
+        var b = item.bbox;
+        if (c.lng < b[0] - 0.002 || c.lng > b[2] + 0.002 ||
+            c.lat < b[1] - 0.002 || c.lat > b[3] + 0.002) continue;
+        if (pointInFeature(c.lng, c.lat, item.feature)) return item;
+      }
+      return null;
+    }
+
+    function fallbackLocation(c) {
+      var found = findCounty(c);
+      return {
+        province: '贵州省',
+        city: found ? (regionData.cityByAdcode[found.parent] || '') : '',
+        county: found ? displayCountyName(found.name) : '',
+        town: ''
+      };
+    }
+
+    function renderLocation(ac, zoom) {
+      ac = ac || {};
+      var province = ac.province || '贵州省';
+      var city = ac.city || '';
+      var county = displayCountyName(ac.county || '');
+      var town = ac.town || '';
+
+      // 位置精度跟随视图层级：
+      // <=7.4 省；8–11 省·市；12–13 省·市·区县；>=14 省·市·区县·街道
+      var parts;
+      if (zoom <= 7.4) {
+        parts = [province];
+      } else if (zoom < 12) {
+        parts = [province, city];
+      } else if (zoom < 14) {
+        parts = [province, city, county];
+      } else {
+        parts = [province, city, county, town];
+      }
+      var clean = [];
+      parts.forEach(function (v) {
+        if (v && clean[clean.length - 1] !== v) clean.push(v);
+      });
+
+      var mainEl = document.getElementById('locationMain');
+      if (mainEl) mainEl.innerText = clean.join(' · ') || '贵州省';
+
+      var sub = '';
+      if (zoom >= 14) {
+        if (ac.road) {
+          sub = ac.road + (ac.road_distance ? ' · ' + ac.road_distance + 'm' : '');
+        } else if (ac.poi) {
+          sub = ac.poi + (ac.poi_distance ? ' · ' + ac.poi_distance + 'm' : '');
+        } else if (ac.address) {
+          sub = ac.address;
+        }
+      }
+
+      var subEl = document.getElementById('locationSub');
+      if (subEl) {
+        subEl.innerText = sub;
+        subEl.classList.toggle('hidden', !sub);
+      }
+    }
+
+    function updateLocationFallback() {
+      if (!map) return;
+      var c = map.getCenter();
+      var key = c.lng.toFixed(3) + ',' + c.lat.toFixed(3);
+      if (geoCache[key]) {
+        renderLocation(geoCache[key], map.getZoom());
+      } else {
+        renderLocation(fallbackLocation(c), map.getZoom());
+      }
+    }
+
+    function scheduleGeocode() {
+      if (geoTimer) clearTimeout(geoTimer);
+      geoTimer = setTimeout(geocodeCenter, 650);
+    }
+
+    function geocodeCenter() {
+      if (!map || !window.TIANDITU_TK) return;
+      var c = map.getCenter();
+      var key = c.lng.toFixed(3) + ',' + c.lat.toFixed(3);
+      if (key === lastGeoKey) return;
+      if (geoCache[key]) {
+        lastGeoKey = key;
+        renderLocation(geoCache[key], map.getZoom());
+        return;
+      }
+
+      lastGeoKey = key;
+      var post = JSON.stringify({ lon: c.lng, lat: c.lat, ver: 1 });
+      var url = 'https://api.tianditu.gov.cn/geocoder?postStr=' +
+        encodeURIComponent(post) + '&tk=' + encodeURIComponent(window.TIANDITU_TK);
+
+      fetch(url)
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          var ac = data && data.result && data.result.addressComponent;
+          if (!ac) return;
+          geoCache[key] = ac;
+          var now = map.getCenter();
+          if (now.lng.toFixed(3) + ',' + now.lat.toFixed(3) === key) {
+            renderLocation(ac, map.getZoom());
+          }
+        })
+        .catch(function () {});
+    }
+
+    function displayCountyName(name) {
+      if (String(name).indexOf('威宁') === 0) return '威宁自治县';
+      return name;
+    }
+
+    function shortCityName(name) {
+      return String(name || '')
+        .replace('布依族苗族自治州', '州')
+        .replace('苗族侗族自治州', '州')
+        .replace('自治州', '州');
+    }
+
+    function focusLabel(item) {
+      var zoom = item.targetZoom || (item.level === 'province' ? 6
+        : item.level === 'city' ? 9
+        : item.level === 'county' ? 11 : 14);
+      map.centerAndZoom(new T.LngLat(item.lng, item.lat), zoom);
+    }
+
+    function levelForZoom(zoom) {
+      if (zoom <= 7.4) return 'province';
+      if (zoom < 9.8) return 'city';
+      if (zoom < 12.5) return 'county';
+      return 'town';
+    }
+
+    function estimateLabelSize(item) {
+      var fs = item.level === 'province' ? 22
+        : item.level === 'city' ? 15
+        : item.level === 'county' ? 11 : 9;
+      var len = Array.from(item.name).length;
+      return { w: Math.max(28, len * fs + 10), h: fs + 8 };
+    }
+
+    function scheduleLabels() {
+      if (labelPending) return;
+      labelPending = true;
+      requestAnimationFrame(function () {
+        labelPending = false;
+        updateLabels();
+        updateLocationFallback();
+      });
+    }
+
+    function placeLabelItems(items, maxShown, placed, center, bounds) {
+      var sw = bounds.getSouthWest();
+      var ne = bounds.getNorthEast();
+      var minLng = Math.min(sw.lng, ne.lng) - 0.2;
+      var maxLng = Math.max(sw.lng, ne.lng) + 0.2;
+      var minLat = Math.min(sw.lat, ne.lat) - 0.2;
+      var maxLat = Math.max(sw.lat, ne.lat) + 0.2;
+
+      items.sort(function (a, b) {
+        var pa = a.priority || 0;
+        var pb = b.priority || 0;
+        if (pa !== pb) return pb - pa;
+        var da = Math.pow(a.lng - center.lng, 2) + Math.pow(a.lat - center.lat, 2);
+        var db = Math.pow(b.lng - center.lng, 2) + Math.pow(b.lat - center.lat, 2);
+        return da - db;
+      });
+
+      var shown = 0;
+      items.forEach(function (item) {
+        if (shown >= maxShown ||
+            item.lng < minLng || item.lng > maxLng ||
+            item.lat < minLat || item.lat > maxLat) {
+          item.el.classList.add('hidden');
+          return;
+        }
+
+        var pt = map.lngLatToContainerPoint(new T.LngLat(item.lng, item.lat));
+        var sz = estimateLabelSize(item);
+        var rect = { x: pt.x - sz.w / 2, y: pt.y - sz.h / 2, w: sz.w, h: sz.h };
+
+        if (rect.x + rect.w < 0 || rect.x > window.innerWidth ||
+            rect.y + rect.h < 0 || rect.y > window.innerHeight) {
+          item.el.classList.add('hidden');
+          return;
+        }
+
+        var overlap = placed.some(function (r) {
+          return !(rect.x + rect.w + 4 < r.x ||
+                   rect.x > r.x + r.w + 4 ||
+                   rect.y + rect.h + 4 < r.y ||
+                   rect.y > r.y + r.h + 4);
+        });
+        if (overlap) {
+          item.el.classList.add('hidden');
+          return;
+        }
+
+        placed.push(rect);
+        item.el.style.transform =
+          'translate3d(' + pt.x + 'px,' + pt.y + 'px,0) translate(-50%,-50%)';
+        item.el.classList.remove('hidden');
+        shown++;
+      });
+      return shown;
+    }
+
+    function updateLabels() {
+      if (!map || !LABELS.length) return;
+      var zoom = map.getZoom();
+      var level = levelForZoom(zoom);
+      var bounds = map.getBounds();
+      var center = map.getCenter();
+
+      LABELS.forEach(function (item) {
+        item.el.classList.add('hidden');
+      });
+
+      var placed = [];
+      var maxShown = level === 'province' ? 1 : level === 'city' ? 20 : 70;
+      var shown = placeLabelItems(
+        LABELS.filter(function (x) { return x.level === level; }),
+        maxShown, placed, center, bounds
+      );
+
+      // 省级视角同时显示市州名称（含威宁自治县），避免大范围空白
+      if (level === 'province') {
+        placeLabelItems(
+          LABELS.filter(function (x) { return x.level === 'city'; }),
+          10, placed, center, bounds
+        );
+      }
+
+      // 乡镇名称缺失时，用区县名称兜底，避免高缩放看不到地名
+      if (level === 'town' && shown === 0) {
+        placeLabelItems(
+          LABELS.filter(function (x) { return x.level === 'county'; }),
+          20, placed, center, bounds
+        );
+      }
+    }
+
+    function applyBoundaryVisibility(zoom) {
+      // 与名称层级对齐：
+      // 7.4–9.8 显示市州名称时，只显示市界，不显示市内的区县界
+      // >=9.8 显示区县名称时，才显示区县界
+      var showCity = zoom >= 7.4 && zoom < 9.8;
+      var showCounty = zoom >= 9.8;
+      var showTown = zoom >= 12.5;
+      window.__boundaryState = { zoom: zoom, showCity: showCity, showCounty: showCounty, showTown: showTown };
+      cityOverlays.forEach(function (o) { showCity ? o.show() : o.hide(); });
+      countyOverlays.forEach(function (o) { showCounty ? o.show() : o.hide(); });
+      townOverlays.forEach(function (o) { showTown ? o.show() : o.hide(); });
+    }
+
+    function outerRings(geojson) {
+      var rings = [];
+      (geojson.features || []).forEach(function (feature) {
+        var g = feature.geometry;
+        if (!g) return;
+        if (g.type === 'Polygon' && g.coordinates[0]) {
+          rings.push(g.coordinates[0]);
+        } else if (g.type === 'MultiPolygon') {
+          g.coordinates.forEach(function (poly) {
+            if (poly[0]) rings.push(poly[0]);
+          });
+        }
+      });
+      return rings;
+    }
+
+    function toLngLats(ring) {
+      return ring.map(function (p) { return new T.LngLat(p[0], p[1]); });
+    }
+
+    function renderBoundary(province, cities) {
+      var rings = outerRings(province);
+      if (!rings.length) return;
+
+      // 省外遮罩：大矩形 + 贵州各外环作为洞
+      var outer = toLngLats([[95, 18], [118, 18], [118, 35], [95, 35]]);
+      var holes = rings.map(toLngLats);
+      var mask = new T.Polygon([outer].concat(holes), {
+        fillColor: '#02040a',
+        fillOpacity: 0.82,
+        color: 'transparent',
+        weight: 0,
+        interactive: false
+      });
+      map.addOverLay(mask);
+
+      var minLng = 999, minLat = 999, maxLng = -999, maxLat = -999;
+
+      // 省界：极淡填充 + 外发光 + 亮线
+      rings.forEach(function (ring) {
+        var pts = toLngLats(ring);
+        map.addOverLay(new T.Polygon(pts, {
+          color: '#00e5ff',
+          weight: 1,
+          opacity: 0.75,
+          fillColor: '#00e5ff',
+          fillOpacity: 0.025,
+          interactive: false
+        }));
+        map.addOverLay(new T.Polyline(pts, {
+          color: '#00e5ff',
+          weight: 12,
+          opacity: 0.12,
+          interactive: false
+        }));
+        map.addOverLay(new T.Polyline(pts, {
+          color: '#00e5ff',
+          weight: 2.5,
+          opacity: 0.95,
+          interactive: false
+        }));
+
+        ring.forEach(function (p) {
+          if (p[0] < minLng) minLng = p[0];
+          if (p[0] > maxLng) maxLng = p[0];
+          if (p[1] < minLat) minLat = p[1];
+          if (p[1] > maxLat) maxLat = p[1];
+        });
+      });
+
+      // 地市边界：亮虚线 + 外发光
+      if (cities) {
+        outerRings(cities).forEach(function (ring) {
+          var pts = toLngLats(ring);
+          var halo = new T.Polyline(pts, {
+            color: '#cbd5e1',
+            weight: 6,
+            opacity: 0.1,
+            interactive: false
+          });
+          var line = new T.Polyline(pts, {
+            color: '#e2e8f0',
+            weight: 1.8,
+            opacity: 0.7,
+            lineStyle: 'dashed',
+            interactive: false
+          });
+          map.addOverLay(halo);
+          map.addOverLay(line);
+          cityOverlays.push(halo, line);
+        });
+      }
+
+      // 限制查看范围：贵州外接矩形 + 0.25° 缓冲；最小缩放 6
+      var bounds = new T.LngLatBounds(
+        new T.LngLat(minLng - 0.25, minLat - 0.25),
+        new T.LngLat(maxLng + 0.25, maxLat + 0.25)
+      );
+      map.setMaxBounds(bounds);
+      map.setMinZoom(6);
+      window.__guizhouBounds = bounds;
+      window.__guizhouCenter = new T.LngLat((minLng + maxLng) / 2, (minLat + maxLat) / 2);
+    }
+
+    function renderAreas(areas) {
+      areas.forEach(function (area) {
+        if (!area.points || area.points.length < 3) return;
+        var points = area.points.map(function (p) { return new T.LngLat(p[0], p[1]); });
+        var polygon = new T.Polygon(points, {
+          color: area.color || '#00e5ff',
+          weight: 2,
+          opacity: 0.8,
+          fillColor: area.color || '#00e5ff',
+          fillOpacity: 0.1
+        });
+        map.addOverLay(polygon);
+      });
+    }
+
+    function renderRoutes(routes) {
+      routes.forEach(function (route) {
+        if (!route.points || route.points.length < 2) return;
+        var points = route.points.map(function (p) { return new T.LngLat(p[0], p[1]); });
+        var line = new T.Polyline(points, {
+          color: route.color || '#00e5ff',
+          weight: route.weight || 4,
+          opacity: 0.9
+        });
+        map.addOverLay(line);
+      });
+    }
+
+    function renderMarkers() {
+      POIS.forEach(function (poi) {
+        var icon = new T.Icon({
+          iconUrl: './icons/pin-' + poi.category + '.png',
+          iconSize: new T.Point(30, 38),
+          iconAnchor: new T.Point(15, 38)
+        });
+        var marker = new T.Marker(new T.LngLat(poi.lng, poi.lat), { icon: icon });
+        marker.addEventListener('click', function () { openCard(poi); });
+        map.addOverLay(marker);
+        markers.push({ poi: poi, marker: marker });
+      });
+      window.__markers = markers;
+    }
+
+    function renderFilters() {
+      var el = document.getElementById('filters');
+      var items = [{ key: 'all', name: '全部', color: '#00e5ff' }].concat(CATEGORIES);
+      el.innerHTML = items.map(function (cat) {
+        var count = cat.key === 'all'
+          ? POIS.length
+          : POIS.filter(function (p) { return p.category === cat.key; }).length;
+        return '<button class="chip ' + (cat.key === 'all' ? 'active' : '') +
+          '" data-cat="' + cat.key + '">' +
+          '<span class="dot" style="background:' + cat.color + '"></span>' +
+          cat.name + '<span class="count">' + count + '</span></button>';
+      }).join('');
+      el.querySelectorAll('.chip').forEach(function (btn) {
+        btn.addEventListener('click', function () { setCategory(btn.getAttribute('data-cat')); });
+      });
+    }
+
+    function setCategory(cat) {
+      currentCat = cat;
+      document.querySelectorAll('#filters .chip').forEach(function (btn) {
+        btn.classList.toggle('active', btn.getAttribute('data-cat') === cat);
+      });
+      markers.forEach(function (item) {
+        if (cat === 'all' || item.poi.category === cat) item.marker.show();
+        else item.marker.hide();
+      });
+    }
+
+    function openCard(poi) {
+      activePoi = poi;
+      var cat = CAT_MAP[poi.category] || { name: poi.category, color: '#00e5ff' };
+      document.getElementById('cardCat').innerText = cat.name;
+      document.getElementById('cardCat').style.color = cat.color;
+      document.getElementById('cardCat').style.borderColor = cat.color + '66';
+      document.getElementById('cardCat').style.background = cat.color + '1f';
+      document.getElementById('cardName').innerText = poi.name;
+      document.getElementById('cardAddress').innerText = poi.address || '';
+      document.getElementById('cardDesc').innerText = poi.desc || '';
+      document.getElementById('card').classList.add('show');
+      notifyMiniProgram(poi);
+    }
+
+    function closeCard() {
+      document.getElementById('card').classList.remove('show');
+      activePoi = null;
+    }
+
+    function focusPoi() {
+      if (!activePoi) return;
+      map.centerAndZoom(
+        new T.LngLat(activePoi.lng, activePoi.lat),
+        Math.max(map.getZoom(), 15)
+      );
+    }
+
+    function notifyMiniProgram(poi) {
+      try {
+        if (window.wx && wx.miniProgram) {
+          wx.miniProgram.postMessage({
+            data: { type: 'poi', id: poi.id, name: poi.name, category: poi.category }
+          });
+        }
+      } catch (e) {
+        // 独立浏览器打开时忽略
+      }
+    }
+
+    document.getElementById('cardClose').addEventListener('click', closeCard);
+    document.getElementById('cardClose2').addEventListener('click', closeCard);
+    document.getElementById('cardFocus').addEventListener('click', focusPoi);
+    document.getElementById('fitGuizhou').addEventListener('click', function () {
+      if (window.__guizhouCenter) {
+        map.centerAndZoom(window.__guizhouCenter, 6);
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+"""Qianshan Manyou API package."""
