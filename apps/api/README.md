@@ -112,6 +112,14 @@ scripts/
 └── publish_snapshot.py
 ```
 
+## 测试与静态检查
+
+```bash
+pip install -e ".[dev]"
+pytest          # tests/：登录、CRUD、发布、公开接口，使用临时库与临时发布目录
+ruff check .    # 静态检查
+```
+
 ## 安全提示
 
 - 修改 `JWT_SECRET` 与默认管理员密码；

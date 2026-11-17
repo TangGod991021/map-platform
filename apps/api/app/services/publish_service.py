@@ -60,7 +60,7 @@ async def publish_lock(publish_dir: Path, timeout: float = LOCK_TIMEOUT_SECONDS)
             except FileNotFoundError:
                 continue
             if time.monotonic() >= deadline:
-                raise RuntimeError("另一次发布正在进行，请稍后重试")
+                raise RuntimeError("另一次发布正在进行，请稍后重试") from None
             await asyncio.sleep(0.2)
 
     try:

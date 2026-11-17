@@ -11,9 +11,9 @@ from pathlib import Path
 API_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(API_ROOT))
 
-from alembic import command  # noqa: E402
 from alembic.config import Config  # noqa: E402
 
+from alembic import command  # noqa: E402
 from app.database import SessionLocal  # noqa: E402
 from app.seed import seed_data  # noqa: E402
 
