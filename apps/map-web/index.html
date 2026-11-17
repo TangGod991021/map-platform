@@ -1068,17 +1068,29 @@
     function renderFilters() {
       var el = document.getElementById('filters');
       var items = [{ key: 'all', name: '全部', color: '#00e5ff' }].concat(CATEGORIES);
-      el.innerHTML = items.map(function (cat) {
+      el.textContent = '';
+      items.forEach(function (cat) {
         var count = cat.key === 'all'
           ? POIS.length
           : POIS.filter(function (p) { return p.category === cat.key; }).length;
-        return '<button class="chip ' + (cat.key === 'all' ? 'active' : '') +
-          '" data-cat="' + cat.key + '">' +
-          '<span class="dot" style="background:' + cat.color + '"></span>' +
-          cat.name + '<span class="count">' + count + '</span></button>';
-      }).join('');
-      el.querySelectorAll('.chip').forEach(function (btn) {
-        btn.addEventListener('click', function () { setCategory(btn.getAttribute('data-cat')); });
+        var btn = document.createElement('button');
+        btn.className = 'chip' + (cat.key === 'all' ? ' active' : '');
+        btn.setAttribute('data-cat', cat.key);
+        btn.addEventListener('click', function () { setCategory(cat.key); });
+
+        var dot = document.createElement('span');
+        dot.className = 'dot';
+        dot.style.background = /^#[0-9a-fA-F]{3,8}$/.test(cat.color || '')
+          ? cat.color
+          : '#00e5ff';
+
+        btn.appendChild(dot);
+        btn.appendChild(document.createTextNode(cat.name || cat.key));
+        var countEl = document.createElement('span');
+        countEl.className = 'count';
+        countEl.textContent = count;
+        btn.appendChild(countEl);
+        el.appendChild(btn);
       });
     }
 

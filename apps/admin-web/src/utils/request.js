@@ -7,7 +7,7 @@ const service = axios.create({
 })
 
 service.interceptors.request.use((config) => {
-  const token = localStorage.getItem('gymap_token')
+  const token = localStorage.getItem('map_platform_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -23,7 +23,7 @@ service.interceptors.response.use(
     const message = (body && body.msg) || '请求失败'
     ElMessage.error(message)
     if (body && body.code === 401) {
-      localStorage.removeItem('gymap_token')
+      localStorage.removeItem('map_platform_token')
       window.location.href = '/login'
     }
     return Promise.reject(new Error(message))
@@ -32,7 +32,7 @@ service.interceptors.response.use(
     const status = error.response?.status
     const message = error.response?.data?.msg || error.message || '网络错误'
     if (status === 401) {
-      localStorage.removeItem('gymap_token')
+      localStorage.removeItem('map_platform_token')
       if (window.location.pathname !== '/login') {
         window.location.href = '/login'
       }

@@ -37,7 +37,7 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  const token = localStorage.getItem('gymap_token')
+  const token = localStorage.getItem('map_platform_token')
   if (!to.meta.public && !token) {
     return '/login'
   }

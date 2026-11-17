@@ -4,7 +4,7 @@ import { getInfo, login } from '@/api/auth'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    token: localStorage.getItem('gymap_token') || '',
+    token: localStorage.getItem('map_platform_token') || '',
     user: null
   }),
   getters: {
@@ -14,7 +14,7 @@ export const useAuthStore = defineStore('auth', {
     async login(form) {
       const res = await login(form)
       this.token = res.data.access_token
-      localStorage.setItem('gymap_token', this.token)
+      localStorage.setItem('map_platform_token', this.token)
       await this.fetchInfo()
     },
     async fetchInfo() {
@@ -25,7 +25,7 @@ export const useAuthStore = defineStore('auth', {
     logout() {
       this.token = ''
       this.user = null
-      localStorage.removeItem('gymap_token')
+      localStorage.removeItem('map_platform_token')
     }
   }
 })
