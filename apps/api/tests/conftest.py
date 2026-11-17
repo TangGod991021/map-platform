@@ -4,6 +4,7 @@ import asyncio
 import os
 import sys
 import tempfile
+import uuid
 from pathlib import Path
 
 import pytest
@@ -66,3 +67,31 @@ async def token(client) -> str:
 @pytest.fixture()
 def auth(token) -> dict:
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture()
+async def limited_auth(client) -> dict:
+    """只有 map:label:list 权限的编辑账号。"""
+    from app.core.security import hash_password
+    from app.database import SessionLocal
+    from app.models.admin import SysUser
+
+    username = f"editor_{uuid.uuid4().hex[:8]}"
+    async with SessionLocal() as db:
+        db.add(
+            SysUser(
+                username=username,
+                password_hash=hash_password("editor123"),
+                nickname="编辑",
+                role="editor",
+                permissions='["map:label:list"]',
+                status="0",
+            )
+        )
+        await db.commit()
+
+    resp = await client.post(
+        "/prod-api/login", json={"username": username, "password": "editor123"}
+    )
+    assert resp.status_code == 200
+    return {"Authorization": f"Bearer {resp.json()['data']['access_token']}"}

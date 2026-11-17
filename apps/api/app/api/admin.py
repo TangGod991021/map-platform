@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.core.response import ok, page
 from app.database import get_db
-from app.deps import get_current_user, user_permissions
+from app.deps import get_current_user, require_permission, user_permissions
 from app.models.map import MapArea, MapCategory, MapLabel, MapRelease, MapRoute
 from app.schemas.admin import LoginRequest
 from app.schemas.map import (
@@ -124,14 +124,17 @@ async def dashboard_summary(
 
 # ---------------- 分类 ----------------
 @router.get("/map/category/list", summary="分类列表")
-async def category_list(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def category_list(
+    user=Depends(require_permission("map:category:list")),
+    db: AsyncSession = Depends(get_db),
+):
     return ok(await map_service.list_categories(db))
 
 
 @router.post("/map/category", summary="新增分类")
 async def category_create(
     payload: CategoryCreate,
-    user=Depends(get_current_user),
+    user=Depends(require_permission("map:category:add")),
     db: AsyncSession = Depends(get_db),
 ):
     try:
@@ -145,7 +148,7 @@ async def category_create(
 async def category_update(
     category_id: int,
     payload: CategoryUpdate,
-    user=Depends(get_current_user),
+    user=Depends(require_permission("map:category:edit")),
     db: AsyncSession = Depends(get_db),
 ):
     try:
@@ -158,7 +161,7 @@ async def category_update(
 @router.delete("/map/category/{category_id}", summary="删除分类")
 async def category_delete(
     category_id: int,
-    user=Depends(get_current_user),
+    user=Depends(require_permission("map:category:remove")),
     db: AsyncSession = Depends(get_db),
 ):
     try:
@@ -176,7 +179,7 @@ async def label_list(
     keyword: str | None = None,
     page_no: int = 1,
     page_size: int = 20,
-    user=Depends(get_current_user),
+    user=Depends(require_permission("map:label:list")),
     db: AsyncSession = Depends(get_db),
 ):
     rows, total = await map_service.list_labels(
@@ -193,7 +196,7 @@ async def label_list(
 @router.get("/map/label/{label_id}", summary="标签详情")
 async def label_detail(
     label_id: int,
-    user=Depends(get_current_user),
+    user=Depends(require_permission("map:label:list")),
     db: AsyncSession = Depends(get_db),
 ):
     detail = await map_service.get_label_detail(db, label_id)
@@ -205,7 +208,7 @@ async def label_detail(
 @router.post("/map/label", summary="新增标签")
 async def label_create(
     payload: LabelCreate,
-    user=Depends(get_current_user),
+    user=Depends(require_permission("map:label:add")),
     db: AsyncSession = Depends(get_db),
 ):
     try:
@@ -220,7 +223,7 @@ async def label_create(
 async def label_update(
     label_id: int,
     payload: LabelUpdate,
-    user=Depends(get_current_user),
+    user=Depends(require_permission("map:label:edit")),
     db: AsyncSession = Depends(get_db),
 ):
     try:
@@ -235,7 +238,7 @@ async def label_update(
 async def label_status(
     label_id: int,
     status: str,
-    user=Depends(get_current_user),
+    user=Depends(require_permission("map:label:edit")),
     db: AsyncSession = Depends(get_db),
 ):
     if status not in {"0", "1", "2"}:
@@ -250,7 +253,7 @@ async def label_status(
 @router.delete("/map/label/{label_id}", summary="删除标签")
 async def label_delete(
     label_id: int,
-    user=Depends(get_current_user),
+    user=Depends(require_permission("map:label:remove")),
     db: AsyncSession = Depends(get_db),
 ):
     try:
@@ -262,14 +265,17 @@ async def label_delete(
 
 # ---------------- 路线 ----------------
 @router.get("/map/route/list", summary="路线列表")
-async def route_list(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def route_list(
+    user=Depends(require_permission("map:route:list")),
+    db: AsyncSession = Depends(get_db),
+):
     return ok(await map_service.list_routes(db))
 
 
 @router.post("/map/route", summary="新增路线")
 async def route_create(
     payload: RouteCreate,
-    user=Depends(get_current_user),
+    user=Depends(require_permission("map:route:add")),
     db: AsyncSession = Depends(get_db),
 ):
     try:
@@ -283,7 +289,7 @@ async def route_create(
 async def route_update(
     route_id: int,
     payload: RouteUpdate,
-    user=Depends(get_current_user),
+    user=Depends(require_permission("map:route:edit")),
     db: AsyncSession = Depends(get_db),
 ):
     try:
@@ -296,7 +302,7 @@ async def route_update(
 @router.delete("/map/route/{route_id}", summary="删除路线")
 async def route_delete(
     route_id: int,
-    user=Depends(get_current_user),
+    user=Depends(require_permission("map:route:remove")),
     db: AsyncSession = Depends(get_db),
 ):
     try:
@@ -308,14 +314,17 @@ async def route_delete(
 
 # ---------------- 区域 ----------------
 @router.get("/map/area/list", summary="区域列表")
-async def area_list(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def area_list(
+    user=Depends(require_permission("map:area:list")),
+    db: AsyncSession = Depends(get_db),
+):
     return ok(await map_service.list_areas(db))
 
 
 @router.post("/map/area", summary="新增区域")
 async def area_create(
     payload: AreaCreate,
-    user=Depends(get_current_user),
+    user=Depends(require_permission("map:area:add")),
     db: AsyncSession = Depends(get_db),
 ):
     try:
@@ -329,7 +338,7 @@ async def area_create(
 async def area_update(
     area_id: int,
     payload: AreaUpdate,
-    user=Depends(get_current_user),
+    user=Depends(require_permission("map:area:edit")),
     db: AsyncSession = Depends(get_db),
 ):
     try:
@@ -342,7 +351,7 @@ async def area_update(
 @router.delete("/map/area/{area_id}", summary="删除区域")
 async def area_delete(
     area_id: int,
-    user=Depends(get_current_user),
+    user=Depends(require_permission("map:area:remove")),
     db: AsyncSession = Depends(get_db),
 ):
     try:
@@ -356,7 +365,7 @@ async def area_delete(
 @router.post("/map/release/publish", summary="发布地图快照")
 async def release_publish(
     payload: PublishRequest,
-    user=Depends(get_current_user),
+    user=Depends(require_permission("map:release:publish")),
     db: AsyncSession = Depends(get_db),
 ):
     result = await publish_service.publish_snapshot(db, payload.note, user.username)
@@ -364,7 +373,10 @@ async def release_publish(
 
 
 @router.get("/map/release/list", summary="发布记录")
-async def release_list(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def release_list(
+    user=Depends(require_permission("map:release:list")),
+    db: AsyncSession = Depends(get_db),
+):
     return ok(await publish_service.list_releases(db))
 
 
@@ -372,7 +384,7 @@ async def release_list(user=Depends(get_current_user), db: AsyncSession = Depend
 @router.post("/common/upload", summary="文件上传")
 async def common_upload(
     file: UploadFile = File(...),
-    user=Depends(get_current_user),
+    user=Depends(require_permission("common:upload")),
 ):
     allowed = {
         ".png",

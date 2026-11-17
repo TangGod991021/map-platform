@@ -40,3 +40,15 @@ async def get_current_user(
 def user_permissions(user: SysUser) -> list[str]:
     permissions = parse_permissions(user.permissions)
     return permissions or []
+
+
+def require_permission(permission: str):
+    """依赖工厂：要求当前用户拥有 `模块:实体:操作` 权限，`*:*:*` 视为超级权限。"""
+
+    async def checker(user: SysUser = Depends(get_current_user)) -> SysUser:
+        permissions = user_permissions(user)
+        if "*:*:*" in permissions or permission in permissions:
+            return user
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="没有操作权限")
+
+    return checker

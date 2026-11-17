@@ -3,6 +3,7 @@
 ## 1. 约定
 
 - 管理接口：`/prod-api/**`，需要 `Authorization: Bearer <token>`
+- 管理接口按 `模块:实体:操作` 校验权限（`require_permission`），`*:*:*` 为超级权限；无权限返回 `403 {code:403,msg:"没有操作权限"}`
 - 公开接口：`/map-api/v1/**`，只读、无登录
 - 统一响应：
 
